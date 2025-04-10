@@ -1,20 +1,313 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Processing</title>
-</head>
-<body>
-    <h1>Upload a ZIP File or Google Drive Link</h1>
-    <form action="/" method="POST" enctype="multipart/form-data">
-        <label for="file">Upload ZIP File:</label>
-        <input type="file" name="file" id="file" accept=".zip"><br><br>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TDS PDF Processor</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f7fa;
+      }
+      h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+      }
+      .container {
+        background-color: white;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      input,
+      button,
+      select {
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      button:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+      }
+      .results {
+        margin-top: 20px;
+        padding: 15px;
+        border-left: 4px solid #3498db;
+        background-color: #f8f9fa;
+        display: none;
+      }
+      .progress {
+        display: none;
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #e3f2fd;
+        border-radius: 4px;
+      }
+      .error {
+        padding: 10px;
+        background-color: #fdecea;
+        border-left: 4px solid #e74c3c;
+        margin-top: 10px;
+        display: none;
+      }
+      .success {
+        padding: 10px;
+        background-color: #eafaf1;
+        border-left: 4px solid #2ecc71;
+        margin-top: 10px;
+        display: none;
+      }
+      .steps {
+        margin-top: 30px;
+        padding: 0;
+      }
+      .steps li {
+        margin-bottom: 15px;
+        list-style-type: none;
+        position: relative;
+        padding-left: 30px;
+      }
+      .steps li:before {
+        content: attr(data-step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        background-color: #3498db;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 20px;
+        font-size: 12px;
+      }
+      .download-section {
+        margin-top: 20px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>TDS PDF Processor</h1>
+      <p>Upload and process TDS PDFs to generate a CSV report</p>
 
-        <label for="drive_link">Google Drive Folder Link:</label>
-        <input type="text" name="drive_link" id="drive_link" placeholder="Enter Google Drive link"><br><br>
+      <ol class="steps">
+        <li data-step="1">
+          Upload a ZIP file containing your TDS PDFs organized in folders by
+          deal name
+        </li>
+        <li data-step="2">
+          Enter the financial quarter/period for this dataset
+        </li>
+        <li data-step="3">Process the files to extract TDS information</li>
+        <li data-step="4">Download the resulting CSV report</li>
+      </ol>
 
-        <button type="submit">Submit</button>
-    </form>
-</body>
+      <form id="upload-form" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="tds-zip">Upload TDS ZIP File</label>
+          <input type="file" id="tds-zip" name="tds_zip" accept=".zip" />
+        </div>
+
+        <button type="submit" id="upload-btn">Upload Files</button>
+      </form>
+
+      <div class="success" id="upload-success">
+        Files uploaded successfully! Now you can process them.
+      </div>
+
+      <div class="error" id="upload-error"></div>
+
+      <form id="process-form" style="margin-top: 30px; display: none">
+        <div class="form-group">
+          <label for="quarter">Financial Quarter/Period</label>
+          <input
+            type="text"
+            id="quarter"
+            name="quarter"
+            placeholder="e.g., FY 2024-25 Q2"
+          />
+        </div>
+
+        <button type="submit" id="process-btn">Process TDS Documents</button>
+      </form>
+
+      <div class="progress" id="progress">Processing files... Please wait.</div>
+
+      <div class="error" id="process-error"></div>
+
+      <div class="success" id="process-success"></div>
+
+      <div class="download-section" id="download-section">
+        <button id="download-btn">Download CSV Report</button>
+      </div>
+    </div>
+
+    <script>
+      // Global to store the filename generated after processing
+      let generatedFilename = "";
+
+      document
+        .getElementById("upload-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const fileInput = document.getElementById("tds-zip");
+
+          if (!fileInput.files.length) {
+            showError("upload-error", "Please select a ZIP file to upload");
+            return;
+          }
+
+          const file = fileInput.files[0];
+          if (!file.name.endsWith(".zip")) {
+            showError("upload-error", "Please upload a ZIP file");
+            return;
+          }
+
+          // Disable the upload button
+          document.getElementById("upload-btn").disabled = true;
+
+          // Hide any previous messages
+          hideMessages();
+
+          // Submit the form data via AJAX
+          fetch("/upload", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                showError("upload-error", data.error);
+              } else {
+                document.getElementById("upload-success").style.display =
+                  "block";
+                document.getElementById("process-form").style.display = "block";
+              }
+            })
+            .catch((error) => {
+              showError(
+                "upload-error",
+                "Error uploading file: " + error.message
+              );
+            })
+            .finally(() => {
+              document.getElementById("upload-btn").disabled = false;
+            });
+        });
+
+      document
+        .getElementById("process-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const quarter = document.getElementById("quarter").value;
+          if (!quarter) {
+            showError(
+              "process-error",
+              "Please enter a financial quarter/period"
+            );
+            return;
+          }
+
+          // Disable the process button
+          document.getElementById("process-btn").disabled = true;
+
+          // Show progress indicator
+          document.getElementById("progress").style.display = "block";
+
+          // Hide any previous messages
+          document.getElementById("process-error").style.display = "none";
+          document.getElementById("process-success").style.display = "none";
+          document.getElementById("download-section").style.display = "none";
+
+          // Submit the process request
+          fetch("/process", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "quarter=" + encodeURIComponent(quarter),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              document.getElementById("progress").style.display = "none";
+
+              if (!data.success) {
+                showError("process-error", data.message);
+              } else {
+                generatedFilename = data.filename;
+                document.getElementById("process-success").textContent =
+                  data.message;
+                document.getElementById("process-success").style.display =
+                  "block";
+                document.getElementById("download-section").style.display =
+                  "block";
+              }
+            })
+            .catch((error) => {
+              document.getElementById("progress").style.display = "none";
+              showError(
+                "process-error",
+                "Error processing files: " + error.message
+              );
+            })
+            .finally(() => {
+              document.getElementById("process-btn").disabled = false;
+            });
+        });
+
+      document
+        .getElementById("download-btn")
+        .addEventListener("click", function () {
+          if (generatedFilename) {
+            window.location.href = "/download/" + generatedFilename;
+          }
+        });
+
+      function showError(elementId, message) {
+        const element = document.getElementById(elementId);
+        element.textContent = message;
+        element.style.display = "block";
+      }
+
+      function hideMessages() {
+        document.getElementById("upload-error").style.display = "none";
+        document.getElementById("upload-success").style.display = "none";
+        document.getElementById("process-error").style.display = "none";
+        document.getElementById("process-success").style.display = "none";
+      }
+    </script>
+  </body>
 </html>

@@ -113,6 +113,25 @@
         margin-top: 20px;
         display: none;
       }
+      .errors-section {
+        margin-top: 20px;
+        display: none;
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: #fff8f8;
+        border-left: 4px solid #e74c3c;
+        padding: 10px;
+      }
+      .errors-section h3 {
+        margin-top: 0;
+        color: #e74c3c;
+      }
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 0.9em;
+      }
     </style>
   </head>
   <body>
@@ -167,10 +186,17 @@
 
       <div class="success" id="process-success"></div>
 
+      <div class="errors-section" id="errors-section">
+        <h3>Processing Warnings</h3>
+        <ul id="errors-list"></ul>
+      </div>
+
       <div class="download-section" id="download-section">
         <button id="download-btn">Download CSV Report</button>
       </div>
     </div>
+
+    <footer>TDS PDF Processor &copy; 2025</footer>
 
     <script>
       // Global to store the filename generated after processing
@@ -251,6 +277,7 @@
           document.getElementById("process-error").style.display = "none";
           document.getElementById("process-success").style.display = "none";
           document.getElementById("download-section").style.display = "none";
+          document.getElementById("errors-section").style.display = "none";
 
           // Submit the process request
           fetch("/process", {
@@ -266,6 +293,11 @@
 
               if (!data.success) {
                 showError("process-error", data.message);
+
+                // Display any errors
+                if (data.errors && data.errors.length > 0) {
+                  displayErrors(data.errors);
+                }
               } else {
                 generatedFilename = data.filename;
                 document.getElementById("process-success").textContent =
@@ -274,6 +306,11 @@
                   "block";
                 document.getElementById("download-section").style.display =
                   "block";
+
+                // Display any warnings if present
+                if (data.errors && data.errors.length > 0) {
+                  displayErrors(data.errors);
+                }
               }
             })
             .catch((error) => {
@@ -302,11 +339,25 @@
         element.style.display = "block";
       }
 
+      function displayErrors(errors) {
+        const errorsList = document.getElementById("errors-list");
+        errorsList.innerHTML = "";
+
+        errors.forEach((error) => {
+          const li = document.createElement("li");
+          li.textContent = error;
+          errorsList.appendChild(li);
+        });
+
+        document.getElementById("errors-section").style.display = "block";
+      }
+
       function hideMessages() {
         document.getElementById("upload-error").style.display = "none";
         document.getElementById("upload-success").style.display = "none";
         document.getElementById("process-error").style.display = "none";
         document.getElementById("process-success").style.display = "none";
+        document.getElementById("errors-section").style.display = "none";
       }
     </script>
   </body>

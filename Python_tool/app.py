@@ -11,9 +11,9 @@ from zipfile import ZipFile
 # Initialize Flask app
 app = Flask(__name__, template_folder='templates')
 
-# Configure upload folder
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+# Configure upload folder - use tmp directory for cloud hosting
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(tempfile.gettempdir(), 'uploads'))
+OUTPUT_FOLDER = os.environ.get('OUTPUT_FOLDER', os.path.join(tempfile.gettempdir(), 'output'))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -189,5 +189,11 @@ def debug_folder_structure():
         "structure": structure
     })
 
+@app.route('/health')
+def health_check():
+    """Simple health check endpoint for cloud providers"""
+    return jsonify({"status": "healthy"})
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

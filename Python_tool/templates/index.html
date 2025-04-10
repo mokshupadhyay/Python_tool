@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Processing</title>
+</head>
+<body>
+    <h1>Upload a ZIP File or Google Drive Link</h1>
+    <form action="/" method="POST" enctype="multipart/form-data">
+        <label for="file">Upload ZIP File:</label>
+        <input type="file" name="file" id="file" accept=".zip"><br><br>
+
+        <label for="drive_link">Google Drive Folder Link:</label>
+        <input type="text" name="drive_link" id="drive_link" placeholder="Enter Google Drive link"><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>

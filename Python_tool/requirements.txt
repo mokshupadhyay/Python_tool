@@ -1,0 +1,5 @@
+flask==2.3.3
+pandas==2.1.0
+pdfplumber==0.10.2
+werkzeug==2.3.7
+gunicorn==21.2.0
